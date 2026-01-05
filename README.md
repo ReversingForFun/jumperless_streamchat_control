@@ -1,19 +1,11 @@
 # jumperless_streamchat_control
 Some code to control a jumperless breadboard through stream chat commands
 
-currently it's simply two functions:
+JumperlessV5: https://jumperless-docs.readthedocs.io/en/latest/
 
-`start_term_listen()` - takes input from the terminal as if it was a chat command, you know, for debugging
+# Syntax:
 
-`start_chat_listen("tFMVXBqy6nU")` - pass it a youtube stream ID and every message will be parsed every X seconds for commands
-
-## What if I want to restrict chat to certain features or something?
-
-there is a config dictionary used to allow/disallow certain constants or rows. Either set the constant to False or remove the row from the row list to disable them
-
-## Syntax:
-
-chat commands start with an exclamation point `!` and is followed by an action then by a node/constant bridged and another node/constant separated with a hypen
+chat commands start with an exclamation point `!` and are followed by the `{action}{node}-{node}` formatted command
 
 actions can be one of:
 - (`c`)onnect
@@ -25,7 +17,7 @@ nodes or constants can be:
 - (`g`)round
 - any row by numbers `1`-`60`
 
-# Syntax Examples:
+## Syntax Examples:
 ### connect GND to row 1
 `!cg-1`
 
@@ -40,3 +32,15 @@ nodes or constants can be:
 
 ### invalid - only one constant allowed on either side
 `!cg-t `
+
+# how to run
+
+currently it's two functions:
+
+`start_term_listen()` - takes input from the terminal as if it was a chat command, you know, for debugging
+
+`start_chat_listen("tFMVXBqy6nU")` - pass it a youtube stream ID and every message will be parsed every X seconds for commands
+
+## What if I want to restrict chat to certain features or something?
+
+there is a config dictionary used to allow/disallow certain constants or rows. Either set the constant to False or remove the row from the row list to disable them
