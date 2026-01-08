@@ -1,7 +1,7 @@
 # jumperless_streamchat_control
 Some code to control a jumperless breadboard through stream chat commands
 
-JumperlessV5: https://jumperless-docs.readthedocs.io/en/latest/
+[https://jumperless-docs.readthedocs.io/en/latest/](https://jumperless-docs.readthedocs.io/en/latest/09.5-micropythonAPIreference/)
 
 # Syntax:
 
