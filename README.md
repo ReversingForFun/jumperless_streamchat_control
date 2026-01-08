@@ -5,7 +5,7 @@ Some code to control a jumperless breadboard through stream chat commands
 
 # Syntax:
 
-chat commands start with an exclamation point `!` and are followed by the `{action}{node}-{node}` formatted command
+chat commands start with an exclamation point `!` and are followed by the function and parameters as specified in the jumperless documentation.
 
 actions can be mostly any function from the jumperless micropython API
 
