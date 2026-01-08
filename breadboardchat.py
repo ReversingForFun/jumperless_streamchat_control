@@ -4,94 +4,132 @@ import time
 import re
 import json
 import logging
+from acl import acl_dict
 
 log = logging.getLogger(__name__)
-board = serial.Serial('/dev/ttyACM0', baudrate=115200)
+log.setLevel(logging.INFO)
+log.addHandler(logging.FileHandler('breadboardchat.log'))
+lf = logging.Formatter("%(asctime)s %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+log.handlers[0].setFormatter(lf)
 
 
-# set the feature flags to enable/disable the feature
-# 'rows' is an array of rows that you want to allow access to
-# any row not included cannot be accessed by chat commands
-config = {'connect': True,
-          'disconnect': True,
-          'top_rail': True,
-          'bottom_rail': False,
-          'gnd': True,
-          'clear': False,
-          'rows': list(range(1,60))
-         }
+board = serial.Serial('/dev/ttyACM2', baudrate=115200)
 
-constants = {'t': 'top_rail',
-             'b': 'bottom_rail',
-             'g': 'gnd',}
-
-log.debug(f'Enabled rows: {config.get('rows')}')
-
-# regex for splitting the chat command into a tuple
-CMD_PATTERN = r'!([cd+])([tgb]|\d+)-([tgb]|\d+)'
-
-def parse_to_board_cmd(cmd: tuple):
-
-    left = cmd[1]
-    right = cmd[2]
-
-    # abort if we've got a constant in both left and right parts    
-    if left.isalpha() and right.isalpha():
-        print('aborting early due to 2 constants')
-        return
-
-    # handle (c)onnect and (d)isconnect verbs
-    if cmd[0] in ['+', 'c']:
-        cmd_str = '+'
-    if cmd[0] in ['-', 'd']:
-        cmd_str = '-'
-
-    left = test_node(left)        
-    right = test_node(right)
-
-    if left and right:
-        cmd_str += left + '-' + right + '\n'
-        log.debug(f'{cmd_str} | cmd_str')
-        board.write(cmd_str.encode('utf-8'))
+buffer = []
 
 
-def test_node(v):
-    # handle constant conversion if no numbers present, otherwise test row range and config state
-    if v.isalpha():
-        # get the jumperless semantic from the constants dict
-        v = constants.get(v, None)
-        # test if the node is disabled or not
-        if not config.get(v):
-            log.warning(f'{v} | constant disabled!')
-            return None
+# we want mostly valid syntax so we don't clean up the user's command too much
+# - convert function name to lowercase,
+# - remove any spaces trailing commas in the params
+# pattern match examples:
+#   !helloworld(a, 2, 3, d)
+def parse_to_repl(cmd: tuple):
+    CMD_PATTERN = r'^!(\w+)\(([\w, -]+?)\)$'
+    matches = re.match(CMD_PATTERN, cmd)
+    if matches:
+        groups = matches.groups()
+        f = groups[0].lower()
+        params = groups[1].replace(', ', ',')
+        repl_cmd = f'{f}({params})'
+        allowed = test_acl(f, params)
+        if allowed:
+            log.debug(f'{repl_cmd} passes ACL, adding to buffer')
+            return repl_cmd
+
+
+# test parameters against the ACL
+def test_param(p):
+    # check if our params are addressing default params and split out the important bit accordingly
+    if '=' in p:
+        p = p.split('=')[1]
+    # if our param is not numeric (I.E. a constant) then handle it accordingly
+    if not p.isnumeric():
+        if p in acl_dict['constants']:
+            return True
+        else:
+            log.warning(f'ACL denied constant: {p}')
+    # otherwise handle the numeric values as row numbers
+    elif int(p) in acl_dict['rows']:
+            return True
     else:
-        # return if the row is out of range
-        if int(v) > 60:
-            log.warning(f'{v} | row out of range!')
-            return None
-        # test if the row is disabled
-        if int(v) not in config['rows']:
-            log.warning(f'{v} | disabled row!')
-            return None
-    return v
+        log.warning(f'ACL denied row: {p}')
+    # ensure we fail if neither conditions are met
+    return False
 
+# test the whole repl command against the ACL
+def test_acl(t, i):
+    # test if our action is in the ACL and abort early if it is not
+    if t in acl_dict['actions']:
+        # split the param variable on the comma if we have multiple parameters
+        if ',' in i:
+            i = i.split(',')
+        if not isinstance(i, list):
+            return test_param(i)
+        else:
+            log.debug('testing multiple params')
+            tests = []
+            for p in i:
+                tests.append(test_param(p))
+            log.debug(f'tests passed: {tests}')
+            if all(tests):
+                return True
+            log.warning(f'ACL denied param: {t}({i})')
+            return False
+    else:
+        log.warning(f'ACL denied action: {t}({i})')
+        return False
+
+
+def send_to_jumperless_repl(rawpython: str):
+    log.debug(f'send_to_jumperless_repl() :: {rawpython}')
+    # if it doesn't exist then append the carriage return required to send the command
+    if '\r\n' not in rawpython[-2:]:
+        rawpython += '\r\n'
+    # write the encoded python to the board
+    board.write(rawpython.encode('utf-8'))
+    # read the incoming buffer until we see our repl command so we know it made it
+    resp = board.read_until(rawpython.encode('utf-8')).decode()
+    if resp:
+        return resp
+    else:
+        return False
+
+# handle messages here, if you want to you can do other things with them before they get to the repl parse function
+def message_callback(msg, user):
+    if msg.startswith('!'):
+        cmd = (msg)
+        parsed = parse_to_repl(cmd)
+        if parsed:
+            buffer.append(parsed)
+
+# iterate through the buffer of commands and warn us if there are more than 15 pending
+def handle_buffer():
+    if len(buffer) >= 15:
+        log.warning(f'command buffer exceeds threshold: {len(buffer)}')
+    if len(buffer) >= 1:
+        next_cmd = buffer.pop()
+        log.info(f'next cmd: {next_cmd}')
+        resp = send_to_jumperless_repl(next_cmd)
+        if resp:
+            log.debug('sent command to jumperless successfully')
+        else:
+            log.error(f'failed to send command to jumperless!\n {resp}')
 
 
 def start_chat_listen(video_id):
 
     chathandle = pytchat.create(video_id)
-
     while chathandle.is_alive():
         time.sleep(1)
         for c in chathandle.get().items:
-            msg = json.loads(c.json()).get('message', '')
-            print(msg)
+            json_data = json.loads(c.json())
+            msg = json_data.get('message', '')
+            usr = json_data.get('author').get('name')
+            log.info(f'{usr}:  {msg}')
+            if msg:
+                message_callback(msg, usr)
+        handle_buffer()
 
-            m = re.match(CMD_PATTERN, msg)
-            if m.groups():
-                cmd_parts = m.groups()
-                print(cmd_parts)
-                parse_board_cmd(cmd_parts)
     board.close()
 
 
@@ -101,21 +139,12 @@ def start_term_listen():
 
     while True:
         msg = input()
-        m = re.match(CMD_PATTERN, msg)
-        if m:
-            if m.groups:
-                parse_to_board_cmd(m.groups())
-                msg = None
+        if msg:
+            message_callback(msg, 'TERM')
+        handle_buffer()
+
+    board.close()
 
 
 start_term_listen()
-# start_chat_listen("tFMVXBqy6nU")
-
-
-
-# Syntax: !{action}{left}-{right}
-#             !cg-1 | connect GND to row 1
-#             !dt-5 | disconnect TOP_RAIL from row 5
-#             !cb-6 | connect BOTTOM_RAIL to row 6
-#             !c7-t | connect row 7 to TOP_RAIL
-#             !cg-t | invalid - only one constant allowed on either side
+# start_chat_listen("")
