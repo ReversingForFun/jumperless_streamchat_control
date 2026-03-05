@@ -1,0 +1,2 @@
+pyserial==3.5
+pytchat==0.5.5
