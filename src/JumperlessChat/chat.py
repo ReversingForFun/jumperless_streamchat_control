@@ -17,15 +17,21 @@ lf = logging.Formatter("%(asctime)s %(levelname)s | %(message)s", "%Y-%m-%d %H:%
 log.handlers[0].setFormatter(lf)
 
 
+# set up the arg parser, args can be passed to the JumperlessChat binary or the chat.py file directly
 parser = argparse.ArgumentParser(prog='JumperlessV5 chat handler', description='Connect JumperlessV5 to your stream chat!')
-parser.add_argument('-yt', '--youtubeid', help='connect to a YouTube stream, provide on the ID portion of the URL')
+parser.add_argument('-yt', '--youtubeid', help='connect to a YouTube stream, provide the ID portion of the URL')
 parser.add_argument('-l',  '--local', help='run a local prompt for testing and control', action='store_true')
 args = parser.parse_args()
 
 
 def main():
+
+    # set up the pytchat handle if a youtube video id was provided
     chathandle = None if not args.youtubeid else pytchat.create(args.youtubeid)
+    # grab the tty device, this may need to be changed depending on your configuration
     board = serial.Serial('/dev/ttyACM3', baudrate=115200)
+
+    # prepare the command buffer and threads for the various command listeners
     buffer = []
     threads = []
 
