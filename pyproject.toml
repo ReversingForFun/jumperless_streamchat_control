@@ -25,5 +25,6 @@ jumperlesschat = "JumperlessChat.chat:main"
 requires = ["setuptools >= 77.0.3",
             "pytchat >= 0.5.5",
             "pyserial >= 3.5",
+            "prompt_toolkit >= 3.0.52",
             ]
 build-backend = "setuptools.build_meta"

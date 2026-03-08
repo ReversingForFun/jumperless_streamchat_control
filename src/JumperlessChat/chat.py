@@ -9,6 +9,7 @@ import sys
 from JumperlessChat.handlers import start_term_listen, start_yt_listen, handle_buffer, exit_gracefully
 
 
+
 log = logging.getLogger(__name__)
 log.setLevel(logging.WARN)
 log.addHandler(logging.FileHandler('breadboardchat.log'))

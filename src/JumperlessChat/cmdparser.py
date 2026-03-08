@@ -17,7 +17,7 @@ log.handlers[0].setFormatter(lf)
 # - remove any spaces trailing commas in the params
 # pattern match examples:
 #   !helloworld(a, 2, 3, d)
-def parse_to_repl(cmd: string):
+def parse_to_repl(cmd: string, user):
     # CMD_PATTERN = r'^!(\w+)\(([\w, -\.]+?)\)$'
     CMD_PATTERN = r'^!(\w+)\((.+?)?\)$'
     matches = re.match(CMD_PATTERN, cmd)
@@ -28,9 +28,11 @@ def parse_to_repl(cmd: string):
             params = groups[1].replace(', ', ',')
         else:
             params = ''
-        print(params)
         repl_cmd = f'{f}({params})'
-        allowed = test_acl(f, params)
+        if user in 'TERM':
+            allowed = True
+        else:
+            allowed = test_acl(f, params)
         if allowed:
             log.debug(f'{repl_cmd} passes ACL, adding to buffer')
             return repl_cmd
@@ -123,6 +125,6 @@ def message_callback(msg, user, local=False):
         if not msg.startswith('!'):
             msg = '!' + msg
     if msg.startswith('!'):
-        parsed = parse_to_repl(msg)
+        parsed = parse_to_repl(msg, user)
         if parsed:
             return parsed
