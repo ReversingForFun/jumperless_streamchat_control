@@ -29,6 +29,7 @@ def parse_to_repl(cmd: str, user):
         else:
             params = ''
         repl_cmd = f'{f}({params})'
+        # check if the user is the terminal and if so bypass the ACL
         if user in 'TERM':
             allowed = True
         else:
