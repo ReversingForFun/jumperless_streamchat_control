@@ -17,7 +17,7 @@ log.handlers[0].setFormatter(lf)
 # - remove any spaces trailing commas in the params
 # pattern match examples:
 #   !helloworld(a, 2, 3, d)
-def parse_to_repl(cmd: string, user):
+def parse_to_repl(cmd: str, user):
     # CMD_PATTERN = r'^!(\w+)\(([\w, -\.]+?)\)$'
     CMD_PATTERN = r'^!(\w+)\((.+?)?\)$'
     matches = re.match(CMD_PATTERN, cmd)
