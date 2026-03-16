@@ -11,7 +11,7 @@ from JumperlessChat.handlers import start_term_listen, start_yt_listen, handle_b
 
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.WARN)
+log.setLevel(logging.INFO)
 log.addHandler(logging.FileHandler('breadboardchat.log'))
 log.addHandler(logging.StreamHandler(sys.stdout))
 lf = logging.Formatter("%(asctime)s %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(prog='JumperlessV5 chat handler', description='
 parser.add_argument('-yt', '--youtubeid', help='connect to a YouTube stream, provide the ID portion of the URL')
 parser.add_argument('-l',  '--local', help='run a local prompt for testing and control', action='store_true')
 parser.add_argument('-D',  '--device', help='specify the serial device to use (normally /dev/ttyACM2)')
+parser.add_argument('-b',  '--bypass', help='bypass the ACL in the local session', action='store_true')
 
 args = parser.parse_args()
 
@@ -41,7 +42,9 @@ def main():
     if chathandle:
         threads.append(threading.Thread(target=start_yt_listen, args=(buffer, chathandle, args.youtubeid,)))
     if args.local:
-        threads.append(threading.Thread(target=start_term_listen, args=(buffer,)))
+        if args.bypass:
+            log.warning('!!Hang onto yer butts, running local mode with ACL bypass!!')
+        threads.append(threading.Thread(target=start_term_listen, args=(buffer, ), kwargs={'bypass': args.bypass}))
     if not args.device:
         log.error(f'Please specify a device with the -D parameter (normally /dev/ttyACM2)')
         sys.exit(1)

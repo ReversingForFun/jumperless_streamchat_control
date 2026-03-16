@@ -55,8 +55,8 @@ def start_yt_listen(buffer, handle, video_id):
 
 # listen to a prompt session and process the input
 # messages will get sent to the message_callback parser prior to getting formatted for REPL
-def start_term_listen(buffer):
-    log.debug('in term listener')
+def start_term_listen(buffer, bypass=False):
+    log.debug('in term listener (bypasss={bypass})')
     session = PromptSession()
     while not killproc.is_set():
         try:
@@ -66,7 +66,7 @@ def start_term_listen(buffer):
                     log.info(f'TERM:  {msg}')
                     if re.fullmatch(r'[qQ]uit|[eE]xit', msg):
                         exit_gracefully()
-                    buffer.append(message_callback(msg, 'TERM', local=True))
+                    buffer.append(message_callback(msg, 'TERM', local=True, insecure=bypass))
                 killproc.wait(0.05)
         except KeyboardInterrupt:
             exit_gracefully()

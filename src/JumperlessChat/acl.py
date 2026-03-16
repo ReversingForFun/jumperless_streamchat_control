@@ -1,6 +1,6 @@
 # include the actions, constants, and rows that you want to allow
 # any item not included cannot be accessed by chat commands
-acl_dict = { 'actions': ['dac_set',
+acl_dict = { 'actions': [
                     'dac_get',
                     'adc_get',
                     'ina_get_current',

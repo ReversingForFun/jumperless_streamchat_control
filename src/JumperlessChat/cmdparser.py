@@ -17,9 +17,10 @@ log.handlers[0].setFormatter(lf)
 # - remove any spaces trailing commas in the params
 # pattern match examples:
 #   !helloworld(a, 2, 3, d)
-def parse_to_repl(cmd: str, user):
+def parse_to_repl(cmd: str, user, insecure=False):
     # CMD_PATTERN = r'^!(\w+)\(([\w, -\.]+?)\)$'
-    CMD_PATTERN = r'^!(\w+)\((.+?)?\)$'
+    # CMD_PATTERN = r'^!(\w+)\((.+?)?\)$'
+    CMD_PATTERN = r'^!(\w+)\((.+?)?\)(?:;.+)$'
     matches = re.match(CMD_PATTERN, cmd)
     if matches:
         groups = matches.groups()
@@ -30,7 +31,7 @@ def parse_to_repl(cmd: str, user):
             params = ''
         repl_cmd = f'{f}({params})'
         # check if the user is the terminal and if so bypass the ACL
-        if user in 'TERM':
+        if insecure:
             allowed = True
         else:
             allowed = test_acl(f, params)
@@ -121,11 +122,11 @@ def send_to_jumperless_repl(rawpython: str, board):
 
 
 # handle messages here, if you want to you can do other things with them before they get to the repl parse function
-def message_callback(msg, user, local=False):
+def message_callback(msg, user, local=False, insecure=False):
     if local:
         if not msg.startswith('!'):
             msg = '!' + msg
     if msg.startswith('!'):
-        parsed = parse_to_repl(msg, user)
+        parsed = parse_to_repl(msg, user, insecure=insecure)
         if parsed:
             return parsed
