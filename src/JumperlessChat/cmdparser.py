@@ -5,7 +5,7 @@ import sys
 from JumperlessChat.acl import acl_dict
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 log.addHandler(logging.FileHandler('breadboardchat.log'))
 log.addHandler(logging.StreamHandler(sys.stdout))
 lf = logging.Formatter("%(asctime)s %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")

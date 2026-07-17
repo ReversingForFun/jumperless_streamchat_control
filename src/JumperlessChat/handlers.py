@@ -59,32 +59,34 @@ def start_yt_listen(buffer, handle, video_id):
             exit_gracefully()
 
 
+# await coroutine for twitch API, establishes connection with parameters and sets up callbacks for certain events
 async def await_twitch(appid, appsecret, channel, buffer):
-
     log.debug('in twitch listener')
 
+    # on_message callback to append message and user to the buffer after being parsed
     async def on_message(msg: ChatMessage):
         if msg:
             log.info(f'{msg.user.name}: {msg.text}')
             buffer.append(message_callback(msg.text, msg.user.name))
 
+    # on_ready callback to connect to the twitch channel when the chatbot is ready
     async def on_ready(ready_event: EventData):
         print(f'pyTwitchAPI handler ready, connecting to {channel}')
         await ready_event.chat.join_room(channel)
 
-    # print(f'twitch env vals: {appid}, {auth}, {channel}')
-
+    # twitchAPI scope is set here. bot only needs read permissions unless we decided to chat back later
     scope = [AuthScope.CHAT_READ]
 
+    # create the twitch object with our appid and secret, do some authentication
     twitch = await Twitch(appid, appsecret)
     auth = UserAuthenticator(twitch, scope)
     token, refresh_token = await auth.authenticate()
     await twitch.set_user_authentication(token, scope, refresh_token)
 
+    # set up the Chat object and register our event callbacks then start the chat listener
     chat = await Chat(twitch)
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)
-
     chat.start()
 
     while not killproc.is_set():
@@ -93,11 +95,11 @@ async def await_twitch(appid, appsecret, channel, buffer):
         except AttributeError:
             exit_gracefully()
 
-
+# non-async wrapper function to allow threaded usage
 def start_twitch_listen(*args):
-
     twitch_coroutine = await_twitch(*args)
     asyncio.run(twitch_coroutine)
+
 
 # listen to a prompt session and process the input
 # messages will get sent to the message_callback parser prior to getting formatted for REPL
