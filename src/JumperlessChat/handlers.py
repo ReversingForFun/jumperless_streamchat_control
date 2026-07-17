@@ -3,6 +3,12 @@ import json
 import logging
 import sys
 import threading
+import asyncio
+
+from twitchAPI.twitch import Twitch
+from twitchAPI.oauth import UserAuthenticator
+from twitchAPI.type import AuthScope, ChatEvent
+from twitchAPI.chat import Chat, EventData, ChatMessage, ChatSub, ChatCommand
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -10,7 +16,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from JumperlessChat.cmdparser import send_to_jumperless_repl, message_callback
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.WARN)
+log.setLevel(logging.INFO)
 log.addHandler(logging.FileHandler('breadboardchat.log'))
 log.addHandler(logging.StreamHandler(sys.stdout))
 lf = logging.Formatter("%(asctime)s %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
@@ -52,6 +58,46 @@ def start_yt_listen(buffer, handle, video_id):
         except AttributeError:
             exit_gracefully()
 
+
+async def await_twitch(appid, appsecret, channel, buffer):
+
+    log.debug('in twitch listener')
+
+    async def on_message(msg: ChatMessage):
+        if msg:
+            log.info(f'{msg.user.name}: {msg.text}')
+            buffer.append(message_callback(msg.text, msg.user.name))
+
+    async def on_ready(ready_event: EventData):
+        print(f'pyTwitchAPI handler ready, connecting to {channel}')
+        await ready_event.chat.join_room(channel)
+
+    # print(f'twitch env vals: {appid}, {auth}, {channel}')
+
+    scope = [AuthScope.CHAT_READ]
+
+    twitch = await Twitch(appid, appsecret)
+    auth = UserAuthenticator(twitch, scope)
+    token, refresh_token = await auth.authenticate()
+    await twitch.set_user_authentication(token, scope, refresh_token)
+
+    chat = await Chat(twitch)
+    chat.register_event(ChatEvent.READY, on_ready)
+    chat.register_event(ChatEvent.MESSAGE, on_message)
+
+    chat.start()
+
+    while not killproc.is_set():
+        try:
+            killproc.wait(0.05)
+        except AttributeError:
+            exit_gracefully()
+
+
+def start_twitch_listen(*args):
+
+    twitch_coroutine = await_twitch(*args)
+    asyncio.run(twitch_coroutine)
 
 # listen to a prompt session and process the input
 # messages will get sent to the message_callback parser prior to getting formatted for REPL

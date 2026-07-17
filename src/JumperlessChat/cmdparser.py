@@ -5,23 +5,26 @@ import sys
 from JumperlessChat.acl import acl_dict
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.WARN)
+log.setLevel(logging.DEBUG)
 log.addHandler(logging.FileHandler('breadboardchat.log'))
 log.addHandler(logging.StreamHandler(sys.stdout))
 lf = logging.Formatter("%(asctime)s %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
 log.handlers[0].setFormatter(lf)
 
 
+
+# parse_to_repl takes a string input and extracts a command and any parameters
+# that follow a starting exclamation point. This is the meat and potatoes of extracting a chat message into a command 
 # we want mostly valid syntax so we don't clean up the user's command too much
 # - convert function name to lowercase,
 # - remove any spaces trailing commas in the params
 # pattern match examples:
 #   !helloworld(a, 2, 3, d)
 def parse_to_repl(cmd: str, user, insecure=False):
-    # CMD_PATTERN = r'^!(\w+)\(([\w, -\.]+?)\)$'
-    # CMD_PATTERN = r'^!(\w+)\((.+?)?\)$'
-    CMD_PATTERN = r'^!(\w+)\((.+?)?\)(?:;.+)$'
+    CMD_PATTERN = r'^!(\w+)\((.+?)?\)$'
     matches = re.match(CMD_PATTERN, cmd)
+
+    # handle any matches from our regex
     if matches:
         groups = matches.groups()
         f = groups[0].lower()
@@ -30,11 +33,15 @@ def parse_to_repl(cmd: str, user, insecure=False):
         else:
             params = ''
         repl_cmd = f'{f}({params})'
-        # check if the user is the terminal and if so bypass the ACL
+
+        # check if insecure is true and if so bypass the ACL
         if insecure:
             allowed = True
         else:
             allowed = test_acl(f, params)
+
+        # if the allowed variable is true then our command passes the ACL
+        # then gets sent to the command buffer
         if allowed:
             log.debug(f'{repl_cmd} passes ACL, adding to buffer')
             return repl_cmd
@@ -104,6 +111,7 @@ def test_acl(t, i):
         return False
 
 
+# send a python command string to the jumperless repl port
 def send_to_jumperless_repl(rawpython: str, board):
     log.debug(f'send_to_jumperless_repl() :: {rawpython}')
     # if it doesn't exist then append the carriage return required to send the command
@@ -121,12 +129,15 @@ def send_to_jumperless_repl(rawpython: str, board):
         return False
 
 
-# handle messages here, if you want to you can do other things with them before they get to the repl parse function
+# these are the messages pulled from chat before they are parsed for valid commands
+# if you want to you can do other things with them before they get to the repl parse function
 def message_callback(msg, user, local=False, insecure=False):
+    log.debug(f'message_callback() :: {msg}, {user}, local={local}, insecure={insecure}')
     if local:
         if not msg.startswith('!'):
             msg = '!' + msg
     if msg.startswith('!'):
+        log.debug('message_callback() :: msg startswith !')
         parsed = parse_to_repl(msg, user, insecure=insecure)
         if parsed:
             return parsed
