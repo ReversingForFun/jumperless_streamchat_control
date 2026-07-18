@@ -49,13 +49,13 @@ def main():
         auth = os.getenv("TTV_AUTH")
         channel = os.getenv("TTV_CHANNEL")
         if not appid:
-            log.INFO(f'no TTV_APPID environment variable provided!')
+            log.info(f'no TTV_APPID environment variable provided!')
             return
         if not auth:
-            log.INFO(f'no TTV_AUTH environment variable provided!')
+            log.info(f'no TTV_AUTH environment variable provided!')
             return
         if not channel:
-            log.INFO(f'no TTV_CHANNEL environment variable provided!')
+            log.info(f'no TTV_CHANNEL environment variable provided!')
             return
         threads.append(threading.Thread(target=start_twitch_listen, args=(appid, auth, channel, buffer,)))
 
