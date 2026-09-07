@@ -31,7 +31,26 @@ options:
 
 [JumperlessV5 API Reference](https://jumperless-docs.readthedocs.io/en/latest/09.5-micropythonAPIreference/)
 
-## Syntax:
+The Jumperless Streamchat application can be used with a local terminal prompt input, connected to a youtube livestream chat, or connected to Twitch chat. All three can be done simultaneously simply ensure you have the correct environment variables set and then pass the required parameters at runtime.
+
+## Connecting to Twitch
+Follow the directions [here](https://dev.twitch.tv/docs/authentication/register-app/) to register a twitch app, ensure the `OAuth Redirect URLs` is set to `http://localhost:17563`
+
+export your twitch AppID, API key and Channel name to the following environment variables prior to launching the application
+```
+TTV_APPID={client_id}
+TTV_AUTH={client_secret}
+TTV_CHANNEL={channel_name}
+```
+
+Launch the application with the -t flag
+
+## Connecting to Youtube
+Considerably easier, simply pass the ID of a youtube livestream to the -yt flag like so:
+
+`jumperlesschat -yt '5ZSY4MIg0Iw' -D /dev/ttyACM2`
+
+## Command Syntax:
 
 chat commands start with an exclamation point `!` and are followed by the function and parameters as specified in the jumperless documentation.
 
