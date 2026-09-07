@@ -10,18 +10,21 @@ install the requirements with `pip install -r requirements.txt`
 
 # Run
 
-run `jumperlesschat` which should be on the venv PATH or run `python chat.py` with the following options
+run `jumperlesschat` which should be on the venv PATH or run `python chat.py` with at least one following service options AND the -D flag with the path to the REPL serial device from your jumperless (typically the third serial device)
 
 ```
-usage: JumperlessV5 chat handler [-h] [-yt YOUTUBEID] [-l]
+usage: JumperlessV5 chat handler [-h] [-D DEVICE] [-l] [-b] [-yt YOUTUBEID] [-t]
 
 Connect JumperlessV5 to your stream chat!
 
 options:
   -h, --help            show this help message and exit
+  -D, --device DEVICE   specify the serial device to use (normally /dev/ttyACM2)
+  -l, --local           run a local prompt for testing and control
+  -b, --bypass          bypass the ACL in the local session
   -yt, --youtubeid YOUTUBEID
                         connect to a YouTube stream, provide the ID portion of the URL
-  -l, --local           run a local prompt for testing and control
+  -t, --twitchchannel   connect to the twitch API with token in environment
 ```
 
 # Usage
@@ -34,7 +37,7 @@ chat commands start with an exclamation point `!` and are followed by the functi
 
 actions can be mostly any function from the jumperless micropython API
 
-refer to the `acl.py` file to see a complete list of allowed functions, constants, and rows.
+refer to the `available_commands.txt` file to see a complete list of allowed functions, constants, and rows.
 
 ### Syntax Examples:
 #### connect GND to row 1

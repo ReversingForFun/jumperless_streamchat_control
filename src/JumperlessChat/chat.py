@@ -22,11 +22,11 @@ log.handlers[0].setFormatter(lf)
 
 # set up the arg parser, args can be passed to the JumperlessChat binary or the chat.py file directly
 parser = argparse.ArgumentParser(prog='JumperlessV5 chat handler', description='Connect JumperlessV5 to your stream chat!')
-parser.add_argument('-yt', '--youtubeid', help='connect to a YouTube stream, provide the ID portion of the URL')
-parser.add_argument('-l',  '--local', help='run a local prompt for testing and control', action='store_true')
 parser.add_argument('-D',  '--device', help='specify the serial device to use (normally /dev/ttyACM2)')
+parser.add_argument('-l',  '--local', help='run a local prompt for testing and control', action='store_true')
 parser.add_argument('-b',  '--bypass', help='bypass the ACL in the local session', action='store_true')
-parser.add_argument('-t',  '--twitchchannel', help='provide a twitch channel to connect to', action='store_true')
+parser.add_argument('-yt', '--youtubeid', help='connect to a YouTube stream, provide the ID portion of the URL')
+parser.add_argument('-t',  '--twitchchannel', help='connect to the twitch API with token in environment', action='store_true')
 
 args = parser.parse_args()
 
