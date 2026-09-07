@@ -1,9 +1,9 @@
-import re
-import json
 import logging
 import sys
 import threading
+import time
 import asyncio
+import json
 
 from twitchAPI.twitch import Twitch
 from twitchAPI.oauth import UserAuthenticator
@@ -24,39 +24,49 @@ log.handlers[0].setFormatter(lf)
 
 killproc = threading.Event()
 
+
 # iterate through the buffer of commands and warn us if there are more than 15 pending
-def handle_buffer(buffer, board):
-    if len(buffer) >= 1:
-        next_cmd = buffer.pop()
-        bonus_cmd = None
-        if next_cmd:
-            if 'oled_set_pixel' in next_cmd:
-                bonus_cmd = 'oled_show()'
-            log.info(f'next cmd: {next_cmd}')
-            resp = send_to_jumperless_repl(next_cmd, board)
-            if resp:
-                if bonus_cmd:
-                    resp = send_to_jumperless_repl(bonus_cmd, board)
-    if len(buffer) >= 15:
-        log.warning(f'command buffer exceeds threshold: {len(buffer)}')
+def handle_board(buffer, board):
+    while not killproc.is_set():
+        log.debug('in handle_buffer')
+        if len(buffer) >= 1:
+            next_cmd = buffer.pop()
+            bonus_cmd = None
+            if next_cmd:
+                if 'oled_set_pixel' in next_cmd:
+                    bonus_cmd = 'oled_show()'
+                log.info(f'next cmd: {next_cmd}')
+                resp = send_to_jumperless_repl(next_cmd, board)
+                if resp:
+                    if bonus_cmd:
+                        resp = send_to_jumperless_repl(bonus_cmd, board)
+        if len(buffer) >= 15:
+            log.warning(f'command buffer exceeds threshold: {len(buffer)}')
+        time.sleep(.2)
 
 
 # listen to a pytchat handle and process the input
 # messages will get sent to the message_callback parser prior to getting formatted for REPL
-def start_yt_listen(buffer, handle, video_id):
+def youtube_chat(buffer, handle):
     log.debug('in yt listener')
+    log.info('Python YTChat connected!')
     while not killproc.is_set():
+        log.debug('handle.is_alive(True)')
         try:
-            for c in handle.get().items:
-                json_data = json.loads(c.json())
-                msg = json_data.get('message', '')
-                usr = json_data.get('author').get('name')
-                log.info(f'{usr}:  {msg}')
-                if msg:
-                    buffer.append(message_callback(msg, usr))
-            killproc.wait(0.05)
-        except AttributeError:
-            exit_gracefully()
+            if handle.is_alive():
+                for c in handle.get().sync_items():
+                    json_data = json.loads(c.json())
+                    msg = json_data.get('message', '')
+                    usr = json_data.get('author').get('name')
+
+                    log.info(f'\n{usr}:  {msg}')
+                    if msg:
+                        buffer.append(message_callback(msg, usr))
+                killproc.wait(0.25)
+        except Exception as e:
+            log.debug(f'Exception: {e}')
+            handle.terminate()
+            exit_gracefully('youtube_chat')
 
 
 # await coroutine for twitch API, establishes connection with parameters and sets up callbacks for certain events
@@ -71,7 +81,7 @@ async def await_twitch(appid, appsecret, channel, buffer):
 
     # on_ready callback to connect to the twitch channel when the chatbot is ready
     async def on_ready(ready_event: EventData):
-        print(f'pyTwitchAPI handler ready, connecting to {channel}')
+        log.info(f'pyTwitchAPI handler ready, connecting to {channel}')
         await ready_event.chat.join_room(channel)
 
     # twitchAPI scope is set here. bot only needs read permissions unless we decided to chat back later
@@ -89,21 +99,19 @@ async def await_twitch(appid, appsecret, channel, buffer):
     chat.register_event(ChatEvent.MESSAGE, on_message)
     chat.start()
 
-    while not killproc.is_set():
-        try:
-            killproc.wait(0.05)
-        except AttributeError:
-            exit_gracefully()
+
 
 # non-async wrapper function to allow threaded usage
-def start_twitch_listen(*args):
+def twitch_chat(*args):
     twitch_coroutine = await_twitch(*args)
     asyncio.run(twitch_coroutine)
+    if killproc.is_set():
+        exit_gracefully('twitch_chat')
 
 
 # listen to a prompt session and process the input
 # messages will get sent to the message_callback parser prior to getting formatted for REPL
-def start_term_listen(buffer, bypass=False):
+def term_chat(buffer, bypass=False):
     log.debug('in term listener (bypasss={bypass})')
     session = PromptSession()
     while not killproc.is_set():
@@ -115,12 +123,12 @@ def start_term_listen(buffer, bypass=False):
                     if re.fullmatch(r'[qQ]uit|[eE]xit', msg):
                         exit_gracefully()
                     buffer.append(message_callback(msg, 'TERM', local=True, insecure=bypass))
-                killproc.wait(0.05)
+            killproc.wait(0.05)
         except KeyboardInterrupt:
-            exit_gracefully()
+            exit_gracefully('term_chat')
 
 
-def exit_gracefully():
-    print('in exit_gracefully')
+def exit_gracefully(callee):
+    log.debug(f'in exit_gracefully from {callee}')
     killproc.set()
     return

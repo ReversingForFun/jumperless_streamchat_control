@@ -92,7 +92,7 @@ def test_acl(t, i):
         if ',' in i:
             i = i.split(',')
         if t in acl_dict['bypass_actions']:
-            log.info(f'bypass parameter ACL action:{t}')
+            log.debug(f'bypass parameter ACL action:{t}')
             return True
         if not isinstance(i, list):
             return test_param(i)
@@ -122,7 +122,7 @@ def send_to_jumperless_repl(rawpython: str, board):
     # read the incoming buffer until we see our repl command so we know it made it
     resp = board.read_until(rawpython.encode('utf-8')).decode()
     if resp:
-        log.info('sent command to jumperless successfully')
+        log.debug('sent command to jumperless successfully')
         return resp
     else:
         log.error(f'failed to send command to jumperless!\n {resp}')

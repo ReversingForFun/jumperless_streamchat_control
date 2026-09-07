@@ -7,7 +7,8 @@ import logging
 import sys
 import os
 
-from JumperlessChat.handlers import start_term_listen, start_yt_listen, start_twitch_listen, handle_buffer, exit_gracefully
+
+from JumperlessChat.handlers import term_chat, twitch_chat, youtube_chat, handle_board, exit_gracefully
 
 
 
@@ -33,7 +34,8 @@ args = parser.parse_args()
 def main():
 
     # set up the pytchat handle if a youtube video id was provided
-    chathandle = None if not args.youtubeid else pytchat.create(args.youtubeid)
+    # chathandle = None if not args.youtubeid else pytchat.create(args.youtubeid)
+    chathandle = None if not args.youtubeid else args.youtubeid
     twitch = None if not args.twitchchannel else True
     # grab the tty device, this may need to be changed depending on your configuration
     board = serial.Serial(args.device, baudrate=115200)
@@ -42,8 +44,13 @@ def main():
     buffer = []
     threads = []
 
+    if board:
+        t = threading.Thread(target=handle_board, args=(buffer, board, ), daemon=True)
+        threads.append(t)
     if chathandle:
-        threads.append(threading.Thread(target=start_yt_listen, args=(buffer, chathandle, args.youtubeid,)))
+        livechat = pytchat.create(video_id=args.youtubeid)
+        t = threading.Thread(target=youtube_chat, args=(buffer, livechat,), daemon=True)
+        threads.append(t)
     if twitch:
         appid = os.getenv("TTV_APPID")
         auth = os.getenv("TTV_AUTH")
@@ -57,12 +64,12 @@ def main():
         if not channel:
             log.info(f'no TTV_CHANNEL environment variable provided!')
             return
-        threads.append(threading.Thread(target=start_twitch_listen, args=(appid, auth, channel, buffer,)))
+        threads.append(threading.Thread(target=twitch_chat, args=(appid, auth, channel, buffer,), daemon=True))
 
     if args.local:
         if args.bypass:
             log.warning('!!Hang onto yer butts, running local mode with ACL bypass!!')
-        threads.append(threading.Thread(target=start_term_listen, args=(buffer, ), kwargs={'bypass': args.bypass}))
+        threads.append(threading.Thread(target=term_chat, args=(buffer, ), kwargs={'bypass': args.bypass}, daemon=True))
     if not args.device:
         log.error(f'Please specify a device with the -D parameter (normally /dev/ttyACM2)')
         sys.exit(1)
@@ -74,15 +81,19 @@ def main():
         t.start()
         log.debug(f'init thread: {t}')
 
+    killproc = False
+
     while True:
         try:
+            if killproc:
+                sys.exit(0)
             time.sleep(.05)
-            handle_buffer(buffer, board)
+            t.join()
             for t in threads:
                 if not t.is_alive():
+                    # t.start()
                     log.error(f'thread has stopped {t}')
-                    t.join()
-                    sys.exit(0)
+                    killproc = True
         except KeyboardInterrupt:
             break
 

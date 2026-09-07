@@ -43,6 +43,7 @@ acl_dict = { 'actions': [
                     'oled_show',
                     'change_terminal_color',
                     'eightball',
+                    'bwoop'
                     ],
         'bypass_actions': ['oled_print'],
         'constants': [  'TOP_RAIL',
