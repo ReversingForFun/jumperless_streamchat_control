@@ -1,3 +1,4 @@
 pyserial==3.5
 pytchat==0.5.5
 prompt_toolkit==3.0.52
+twitchAPI==4.5.0
