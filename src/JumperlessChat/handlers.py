@@ -4,6 +4,7 @@ import threading
 import time
 import asyncio
 import json
+import re
 
 from twitchAPI.twitch import Twitch
 from twitchAPI.oauth import UserAuthenticator
@@ -81,7 +82,7 @@ async def await_twitch(appid, appsecret, channel, buffer):
 
     # on_ready callback to connect to the twitch channel when the chatbot is ready
     async def on_ready(ready_event: EventData):
-        log.info(f'pyTwitchAPI handler ready, connecting to {channel}')
+        log.info(f'\npyTwitchAPI handler ready, connecting to {channel}')
         await ready_event.chat.join_room(channel)
 
     # twitchAPI scope is set here. bot only needs read permissions unless we decided to chat back later
@@ -98,7 +99,6 @@ async def await_twitch(appid, appsecret, channel, buffer):
     chat.register_event(ChatEvent.READY, on_ready)
     chat.register_event(ChatEvent.MESSAGE, on_message)
     chat.start()
-
 
 
 # non-async wrapper function to allow threaded usage
